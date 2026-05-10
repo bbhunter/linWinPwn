@@ -92,7 +92,9 @@ install_tools() {
     pipx_install_or_upgrade git+https://github.com/synacktiv/gpoParser gpoParser
     pipx_install_or_upgrade git+https://github.com/cogiceo/daclsearch daclsearch
     pipx_install_or_upgrade git+https://github.com/sikumy/spearspray spearspray
-    pipx_install_or_upgrade git+https://github.com/p0dalirius/ShareHound sharehound
+    wget -q "https://github.com/p0dalirius/ShareHound/archive/refs/heads/main.zip" -O "$scripts_dir/ShareHound.zip"
+    unzip -o "$scripts_dir/ShareHound.zip" -d "$scripts_dir"
+    pipx_install_or_upgrade $scripts_dir/ShareHound-main/Python ShareHound
     pipx_install_or_upgrade git+https://github.com/mverschu/adwsdomaindump adwsdomaindump
     pipx_install_or_upgrade git+https://github.com/l4rm4nd/PyADRecon pyadrecon
     pipx_install_or_upgrade git+https://github.com/l4rm4nd/PyADRecon-ADWS pyadrecon_adws
