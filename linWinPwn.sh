@@ -3634,9 +3634,9 @@ relayking_check() {
         if [ "${ldaps_bool}" == true ]; then ldaps_param="--ldaps"; else ldaps_param="--ldap"; fi
         if [ "${dnstcp_bool}" == true ]; then dnstcp_param="--dns-tcp "; else dnstcp_param=""; fi
         if [ "${nullsess_bool}" == true ]; then
-            run_command "${relayking} ${argument_rking} --protocols smb,ldap,http -t ${curr_targets_list} --dc-ip ${dc_ip} ${ldaps_param} ${dnstcp_param} -ns ${dns_ip} -o plaintext,csv,json --output-file ${Vulnerabilities_dir}/relayking/relayking_nullauth_${dc_domain}" | tee -a "${Vulnerabilities_dir}/relayking/relayking_nullauth_output_${dc_domain}.txt"
+            run_command "${python3} ${relayking} ${argument_rking} --protocols smb,ldap,http -t ${curr_targets_list} --dc-ip ${dc_ip} ${ldaps_param} ${dnstcp_param} -ns ${dns_ip} -o plaintext,csv,json --output-file ${Vulnerabilities_dir}/relayking/relayking_nullauth_${dc_domain}" | tee -a "${Vulnerabilities_dir}/relayking/relayking_nullauth_output_${dc_domain}.txt"
         else
-            run_command "${relayking} ${argument_rking} --audit --protocols smb,ldap,ldaps,mssql,http,https -t ${curr_targets_list} --dc-ip ${dc_ip} ${ldaps_param} ${dnstcp_param} -ns ${dns_ip} --threads 10 -o plaintext,csv,json --output-file ${Vulnerabilities_dir}/relayking/relayking_audit_${dc_domain} --proto-portscan --gen-relay-list ${Vulnerabilities_dir}/relayking/relaytargets_output_${dc_domain}.txt" | tee -a "${Vulnerabilities_dir}/relayking/relayking_audit_output_${dc_domain}.txt"
+            run_command "${python3} ${relayking} ${argument_rking} --audit --protocols smb,ldap,ldaps,mssql,http,https -t ${curr_targets_list} --dc-ip ${dc_ip} ${ldaps_param} ${dnstcp_param} -ns ${dns_ip} --threads 10 -o plaintext,csv,json --output-file ${Vulnerabilities_dir}/relayking/relayking_audit_${dc_domain} --proto-portscan --gen-relay-list ${Vulnerabilities_dir}/relayking/relaytargets_output_${dc_domain}.txt" | tee -a "${Vulnerabilities_dir}/relayking/relayking_audit_output_${dc_domain}.txt"
         fi
     fi
     echo -e ""
