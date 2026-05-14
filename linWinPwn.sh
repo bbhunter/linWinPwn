@@ -4343,7 +4343,7 @@ pygpo_abuse() {
         read -rp ">> " command_input_gpoabuse </dev/tty
         if [ ! "${command_input_gpoabuse}" == "" ]; then command_gpoabuse="-command ${command_input_gpoabuse}"; fi
         if [ "${ldaps_bool}" == true ]; then ldaps_param="-ldaps"; else ldaps_param=""; fi
-        run_command "${python3} ${pygpoabuse} ${argument_pygpoabuse} ${ldaps_param} -dc-ip ${dc_ip} -gpo-id '${target_gpoabuse}' '${userbool_gpoabuse}' ${command_gpoabuse}" 2>&1 | tee -a "${Modification_dir}/pygpoabuse_output_${user_var}.txt"
+        run_command "${python3} ${pygpoabuse} ${argument_pygpoabuse} ${ldaps_param} -dc-ip ${dc_ip} -gpo-id '${target_gpoabuse}' ${userbool_gpoabuse} ${command_gpoabuse}" 2>&1 | tee -a "${Modification_dir}/pygpoabuse_output_${user_var}.txt"
     fi
     echo -e ""
 }
