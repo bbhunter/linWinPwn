@@ -5267,6 +5267,7 @@ modify_target() {
     echo -e "------------------------------------------------------------"
     echo -e "${YELLOW}[i]${NC} Current target(s): ${YELLOW} ${curr_targets}${custom_servers}${custom_ip}${NC} - Number of server(s): ${YELLOW}$(wc -l < "${curr_targets_list}")${NC}"
 
+    parse_servers
     dc_count=$(wc -l < "${target_dc}" 2>/dev/null || echo "0")
     srv_count=$(wc -l < "${target_servers}" 2>/dev/null || echo "0")
 
