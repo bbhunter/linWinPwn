@@ -165,7 +165,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.7 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.8 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -3664,6 +3664,12 @@ netexec_drop(){
     echo -e ""
 }
 
+onelogon_check() {
+    echo -e "${BLUE}[*] onelogon check ${NC}"
+    run_command "${netexec} ${ne_verbose} smb ${target_dc} ${argument_ne} -M onelogon --log ${Vulnerabilities_dir}/ne_onelogon_output_${dc_domain}.txt" 2>&1
+    echo -e ""
+}
+
 ###### mssql_checks: MSSQL scan
 mssql_enum() {
     if ! stat "${windapsearch}" >/dev/null 2>&1 || ! stat "${impacket_GetUserSPNs}" >/dev/null 2>&1; then
@@ -6774,6 +6780,7 @@ vulns_menu() {
     check_tool_status "${impacket_badsuccessor}" "Check for BadSuccessor vuln using netexec and impacket" "16"
     check_tool_status "${relayking}" "RelayKing Coerce scan" "17"
     check_tool_status "${netexec}" "Drop LNK, Library-MS and SC (on writeable share)" "18"
+    check_tool_status "${netexec}" "onelogon check using netexec (only on DC)" "19"
     echo -e "back) Go back"
     echo -e "exit) Exit"
 
@@ -6877,6 +6884,11 @@ vulns_menu() {
 
     18)
         netexec_drop
+        vulns_menu
+        ;;
+
+    19)
+        onelogon_check
         vulns_menu
         ;;
 

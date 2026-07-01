@@ -166,6 +166,7 @@ Vuln Checks menu
 16) Check for BadSuccessor vuln using netexec and impacket
 17) RelayKing coerce scan
 18) Drop LNK, Library-MS and SC (on writeable share)
+19) onelogon check using netexec (only on DC)
 ```
 
 MSSQL Enumeration menu
