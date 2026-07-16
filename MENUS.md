@@ -185,23 +185,24 @@ Password Dump menu
 3) DCSync using secretsdump (only on DC)
 4) Dump SAM and LSA using secretsdump
 5) Dump SAM and SYSTEM using reg
-6) Dump NTDS using netexec
-7) Dump SAM and LSA secrets using netexec
-8) Dump LSA secrets using netexec
-9) Dump SAM and LSA secrets using netexec without touching disk (regdump)
-10) Dump LSASS using lsassy
-11) Dump LSASS using handlekatz
-12) Dump LSASS using procdump
-13) Dump LSASS using nanodump
-14) Dump dpapi secrets using netexec
-15) Dump secrets using DonPAPI
-16) Dump secrets using DonPAPI (Disable Remote Ops operations)
-17) Dump secrets using hekatomb (only on DC)
-18) Search for juicy information using netexec
-19) Dump Veeam credentials (only from Veeam server)
-20) Dump Msol password (only from Azure AD-Connect server)
-21) Extract Bitlocker Keys
-22) Dump SAM and LSA secrets using winrm with netexec
+6) Dump SAM and SYSTEM using regsecrets
+7) Dump NTDS using netexec
+8) Dump SAM and LSA secrets using netexec
+9) Dump LSA secrets using netexec
+10) Dump SAM and LSA secrets using netexec without touching disk (regdump)
+11) Dump LSASS using lsassy
+12) Dump LSASS using handlekatz
+13) Dump LSASS using procdump
+14) Dump LSASS using nanodump
+15) Dump dpapi secrets using netexec
+16) Dump secrets using DonPAPI
+17) Dump secrets using DonPAPI (Disable Remote Ops operations)
+18) Dump secrets using hekatomb (only on DC)
+19) Search for juicy information using netexec
+20) Dump Veeam credentials (only from Veeam server)
+21) Dump Msol password (only from Azure AD-Connect server)
+22) Extract Bitlocker Keys
+23) Dump SAM and LSA secrets using winrm with netexec
 ```
 
 Modification menu
