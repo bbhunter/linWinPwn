@@ -32,7 +32,7 @@ AD Enum menu
 5) MS-RPC Users Enumeration using netexec
 6) Password policy Enumeration using netexec
 7) LDAP Users Enumeration using netexec
-8) LDAP Enumeration using netexec (passnotreq, userdesc, maq, subnets, passpol)
+8) LDAP Enumeration using netexec (passnotreq, userdesc, maq, subnets, passpol, entra-id)
 9) Delegation Enumeration using findDelegation and netexec
 10) bloodyAD All Enumeration
 11) bloodyAD write rights Enumeration
@@ -63,6 +63,7 @@ AD Enum menu
 36) Open PowerView.py Console
 37) Scan for GhostSPN
 38) Check DNS zones allowing nonsecure dynamic updates using netexec
+39) Enumeration of deleted accounts using netexec (tombstone)
 ```
 
 ADCS menu
@@ -172,6 +173,7 @@ Vuln Checks menu
 18) Drop LNK, Library-MS and SC (on writeable share)
 19) onelogon check using netexec (only on DC)
 20) Enumerate common (useful) CVEs using netexec
+21) Enumerate obsolete operating systems from LDAP using netexec
 ```
 
 MSSQL Enumeration menu

